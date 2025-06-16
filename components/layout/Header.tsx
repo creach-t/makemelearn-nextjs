@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Menu, X } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 const navigation = [
   { name: 'Accueil', href: '/' },
@@ -16,6 +17,19 @@ const navigation = [
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+
+  // Vérifie si on est sur la page d'accueil
+  const isHomePage = pathname === '/'
+
+  const handleJoinClick = (e: React.MouseEvent) => {
+    if (!isHomePage) {
+      e.preventDefault()
+      router.push('/#signup')
+    }
+    // Si on est sur l'accueil, le comportement normal du lien fonctionnera
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,8 +52,8 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20">
           {/* Logo */}
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className="text-2xl sm:text-3xl font-black gradient-text hover:scale-105 transition-transform"
           >
             MakeMeLearn
@@ -61,7 +75,8 @@ export function Header() {
 
           {/* CTA Button */}
           <Link
-            href="#signup"
+            href={isHomePage ? "#signup" : "/#signup"}
+            onClick={handleJoinClick}
             className="hidden md:inline-flex btn btn-primary"
           >
             Rejoindre
@@ -94,9 +109,12 @@ export function Header() {
             ))}
             <div className="pt-4 px-3">
               <Link
-                href="#signup"
+                href={isHomePage ? "#signup" : "/#signup"}
+                onClick={(e) => {
+                  handleJoinClick(e)
+                  setIsOpen(false)
+                }}
                 className="btn btn-primary w-full justify-center"
-                onClick={() => setIsOpen(false)}
               >
                 Rejoindre
               </Link>

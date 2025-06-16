@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter'
@@ -67,8 +69,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html 
-      lang="fr" 
+    <html
+      lang="fr"
       className={inter.variable}
       suppressHydrationWarning={true}
     >
@@ -81,11 +83,13 @@ export default function RootLayout({
         <meta name="theme-color" content="#667eea" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
-      <body 
+      <body
         className={inter.className}
         suppressHydrationWarning={true}
       >
+        <Header />
         {children}
+        <Footer />
       </body>
     </html>
   )

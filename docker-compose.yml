@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: makemelearn
       POSTGRES_USER: makemelearn_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-MakeMeLearn2025!SecurePass}
+      POSTGRES_PASSWORD: MakeMeLearn2025SecurePass
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -31,7 +31,7 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://makemelearn_user:${POSTGRES_PASSWORD:-MakeMeLearn2025!SecurePass}@postgres:5432/makemelearn
+      DATABASE_URL: postgresql://makemelearn_user:MakeMeLearn2025SecurePass@postgres:5432/makemelearn
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT:-587}

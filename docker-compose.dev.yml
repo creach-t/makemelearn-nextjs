@@ -8,11 +8,11 @@ services:
     environment:
       POSTGRES_DB: makemelearn
       POSTGRES_USER: makemelearn_user
-      POSTGRES_PASSWORD: MakeMeLearn2025!SecurePass
+      POSTGRES_PASSWORD: MakeMeLearn2025SecurePass
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U makemelearn_user -d makemelearn"]
