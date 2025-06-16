@@ -33,6 +33,15 @@ async function checkRateLimit(ip: string): Promise<boolean> {
 
 export async function POST(request: NextRequest) {
   try {
+    // DEBUG: Vérifiez les variables d'environnement
+    console.log('🔍 DEBUG - DATABASE_URL:', process.env.DATABASE_URL);
+    console.log('🔍 DEBUG - NODE_ENV:', process.env.NODE_ENV);
+    console.log('🔍 DEBUG - All env vars related to DB:', {
+      DATABASE_URL: !!process.env.DATABASE_URL,
+      POSTGRES_PASSWORD: !!process.env.POSTGRES_PASSWORD,
+      NODE_ENV: process.env.NODE_ENV
+    });
+
     // Rate limiting
     const ip = getClientIP(request) || 'unknown'
     const canProceed = await checkRateLimit(ip)
@@ -153,6 +162,9 @@ export async function POST(request: NextRequest) {
 // Health check
 export async function GET() {
   try {
+    // DEBUG: Vérifiez les variables d'environnement
+    console.log('🔍 DEBUG GET - DATABASE_URL:', process.env.DATABASE_URL);
+    
     // Test database connection
     await prisma.$queryRaw`SELECT 1`
     
@@ -162,6 +174,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
+    console.error('Health check error:', error);
     return NextResponse.json(
       { 
         success: false, 
