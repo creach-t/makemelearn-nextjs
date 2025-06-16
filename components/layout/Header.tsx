@@ -1,10 +1,10 @@
 'use client'
 
-import { cn } from '@/lib/utils'
-import { Menu, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { Menu, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const navigation = [
   { name: 'Accueil', href: '/' },
@@ -17,13 +17,16 @@ const navigation = [
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
-  const router = useRouter()
   const pathname = usePathname()
+  const router = useRouter()
 
   // Vérifie si on est sur la page d'accueil
   const isHomePage = pathname === '/'
 
+  // Gère le clic sur le bouton "Rejoindre"
   const handleJoinClick = (e: React.MouseEvent) => {
+    setIsOpen(false) // Ferme toujours le menu d'abord
+    
     if (!isHomePage) {
       e.preventDefault()
       router.push('/#signup')
@@ -40,6 +43,11 @@ export function Header() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Ferme le menu quand la route change
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
+
   return (
     <header
       className={cn(
@@ -52,8 +60,8 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20">
           {/* Logo */}
-          <Link
-            href="/"
+          <Link 
+            href="/" 
             className="text-2xl sm:text-3xl font-black gradient-text hover:scale-105 transition-transform"
           >
             MakeMeLearn
@@ -73,7 +81,7 @@ export function Header() {
             ))}
           </nav>
 
-          {/* CTA Button */}
+          {/* CTA Button Desktop */}
           <Link
             href={isHomePage ? "#signup" : "/#signup"}
             onClick={handleJoinClick}
@@ -110,10 +118,7 @@ export function Header() {
             <div className="pt-4 px-3">
               <Link
                 href={isHomePage ? "#signup" : "/#signup"}
-                onClick={(e) => {
-                  handleJoinClick(e)
-                  setIsOpen(false)
-                }}
+                onClick={handleJoinClick}
                 className="btn btn-primary w-full justify-center"
               >
                 Rejoindre
