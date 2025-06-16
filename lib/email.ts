@@ -1,15 +1,38 @@
 import nodemailer from 'nodemailer'
 
-// Email configuration
-const transporter = nodemailer.createTransporter({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-})
+// Email configuration avec gestion dev/prod
+let transporter: nodemailer.Transporter | null = null
+
+// Initialisation conditionnelle du transporter
+function getTransporter() {
+  if (!transporter) {
+    // En développement, utiliser un transporter de test
+    if (process.env.NODE_ENV === 'development' && !process.env.SMTP_HOST) {
+      // Créer un compte de test Ethereal pour le développement
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: 'ethereal.user@ethereal.email',
+          pass: 'ethereal.pass'
+        }
+      })
+    } else {
+      // Configuration production
+      transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASSWORD,
+        },
+      })
+    }
+  }
+  return transporter
+}
 
 export interface EmailOptions {
   to: string | string[]
@@ -19,13 +42,20 @@ export interface EmailOptions {
   from?: string
 }
 
-export async function sendEmail(options: EmailOptions): Promise<boolean> {
+export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
-      console.log('Email not configured, skipping send')
-      return true // Return true in development to avoid errors
+    // En développement sans SMTP configuré, simuler l'envoi
+    if (process.env.NODE_ENV === 'development' && !process.env.SMTP_USER) {
+      console.log('📧 Email simulé (dev mode):', {
+        to: options.to,
+        subject: options.subject,
+        preview: options.text?.substring(0, 100) + '...' || 'HTML email'
+      })
+      return { success: true, messageId: 'dev-simulation-' + Date.now() }
     }
 
+    const transporter = getTransporter()
+    
     const mailOptions = {
       from: options.from || process.env.EMAIL_FROM || 'hello@makemelearn.fr',
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
@@ -34,11 +64,15 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       text: options.text,
     }
 
-    await transporter.sendMail(mailOptions)
-    return true
+    const result = await transporter.sendMail(mailOptions)
+    console.log('✅ Email envoyé:', result.messageId)
+    return { success: true, messageId: result.messageId }
   } catch (error) {
-    console.error('Error sending email:', error)
-    return false
+    console.error('❌ Erreur envoi email:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Erreur inconnue' 
+    }
   }
 }
 
@@ -131,6 +165,15 @@ MakeMeLearn - Apprenons et grandissons ensemble
         </div>
       </div>
     `,
+    text: `
+Bonjour ${name},
+
+Nous avons bien reçu votre message concernant : "${subject}"
+
+Notre équipe vous répondra dans les plus brefs délais, généralement sous 24-48h.
+
+Merci pour votre intérêt pour MakeMeLearn !
+    `,
   }),
 
   newContactNotification: (name: string, email: string, subject: string, message: string) => ({
@@ -146,6 +189,16 @@ MakeMeLearn - Apprenons et grandissons ensemble
           ${message.replace(/\n/g, '<br>')}
         </div>
       </div>
+    `,
+    text: `
+Nouveau message de contact
+
+Nom : ${name}
+Email : ${email}
+Sujet : ${subject}
+
+Message :
+${message}
     `,
   }),
 }
