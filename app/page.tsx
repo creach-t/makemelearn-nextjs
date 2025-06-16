@@ -5,8 +5,6 @@ import { FeaturesSection } from '@/components/sections/FeaturesSection'
 import { StatsSection } from '@/components/sections/StatsSection'
 import { VisionSection } from '@/components/sections/VisionSection'
 import { SignupSection } from '@/components/sections/SignupSection'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
 
 export const metadata: Metadata = {
   title: 'Accueil - Communauté d\'entraide entre autodidactes créatifs',
@@ -15,17 +13,13 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <>
-      <Header />
-      <main>
-        <HeroSection />
-        <ProcessSection />
-        <FeaturesSection />
-        <StatsSection />
-        <VisionSection />
-        <SignupSection />
-      </main>
-      <Footer />
-    </>
+    <main>
+      <HeroSection />
+      <ProcessSection />
+      <FeaturesSection />
+      <StatsSection />
+      <VisionSection />
+      <SignupSection />
+    </main>
   )
 }
