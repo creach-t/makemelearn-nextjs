@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Registration {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  source           String    @default("website")
+  metadata         Json?
+  isVerified       Boolean   @default(false) @map("is_verified")
+  verificationToken String?   @map("verification_token")
+  unsubscribedAt   DateTime? @map("unsubscribed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("registrations")
+  @@index([email])
+  @@index([createdAt])
+  @@index([source])
+  @@index([isVerified])
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  metadata  Json?
+  status    String   @default("new") // new, read, replied, archived
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("contacts")
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Stat {
+  id          String   @id @default(cuid())
+  metricName  String   @map("metric_name")
+  metricValue Int      @default(0) @map("metric_value")
+  date        DateTime @default(now()) @db.Date
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([metricName, date])
+  @@map("stats")
+  @@index([metricName, date])
+  @@index([date])
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  page      String
+  userAgent String?  @map("user_agent")
+  ip        String?
+  referer   String?
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("page_views")
+  @@index([page])
+  @@index([createdAt])
+}
