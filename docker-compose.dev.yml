@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  # Database seule pour le développement
+  postgres:
+    image: postgres:15-alpine
+    container_name: makemelearn_dev_db
+    environment:
+      POSTGRES_DB: makemelearn
+      POSTGRES_USER: makemelearn_user
+      POSTGRES_PASSWORD: MakeMeLearn2025!SecurePass
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U makemelearn_user -d makemelearn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:
+    driver: local
