@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-
-// Importation conditionnelle pour éviter les erreurs
-let sendEmail: any
-let emailTemplates: any
-
-try {
-  const email = require('@/lib/email')
-  sendEmail = email.sendEmail
-  emailTemplates = email.emailTemplates
-} catch (error) {
-  console.warn('Email module non disponible:', error)
-}
+import { prisma } from '@/lib/db'
+import { sendEmail, emailTemplates } from '@/lib/email'
+import { getClientIP } from '@/lib/utils'
 
 // Validation schema
 const contactSchema = z.object({
@@ -51,9 +42,7 @@ function checkRateLimit(ip: string): boolean {
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
-               request.headers.get('x-real-ip') || 
-               'unknown'
+    const ip = getClientIP(request) || 'unknown'
     
     if (!checkRateLimit(ip)) {
       return NextResponse.json(
@@ -65,70 +54,77 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse request body
+    // Parse and validate request body
     const body = await request.json()
-    
-    // Validate data
     const validatedData = contactSchema.parse(body)
 
-    // Si le module email n'est pas disponible, simuler l'envoi
-    if (!sendEmail || !emailTemplates) {
-      console.log('📧 Message de contact simulé (email non configuré):', {
-        from: validatedData.email,
+    // Save contact to database (always, even if email fails)
+    const contact = await prisma.contact.create({
+      data: {
         name: validatedData.name,
+        email: validatedData.email,
         subject: validatedData.subject,
-        preview: validatedData.message.substring(0, 100) + '...'
-      })
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Message reçu ! Nous vous répondrons rapidement.'
-      })
-    }
-
-    // Send confirmation email to user
-    const userTemplate = emailTemplates.contactConfirmation(
-      validatedData.name,
-      validatedData.subject
-    )
-    
-    const userEmailResult = await sendEmail({
-      to: validatedData.email,
-      subject: userTemplate.subject,
-      html: userTemplate.html,
-      text: userTemplate.text
-    })
-
-    // Send notification email to admin
-    const adminTemplate = emailTemplates.newContactNotification(
-      validatedData.name,
-      validatedData.email,
-      validatedData.subject,
-      validatedData.message
-    )
-    
-    const adminEmailResult = await sendEmail({
-      to: process.env.ADMIN_EMAIL || 'hello@makemelearn.fr',
-      subject: adminTemplate.subject,
-      html: adminTemplate.html,
-      text: adminTemplate.text
-    })
-
-    // Check if emails were sent successfully
-    if (!userEmailResult.success && !adminEmailResult.success) {
-      console.error('Erreur envoi emails:', { userEmailResult, adminEmailResult })
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Erreur lors de l\'envoi. Veuillez réessayer.' 
+        message: validatedData.message,
+        metadata: {
+          ip,
+          userAgent: request.headers.get('user-agent'),
+          timestamp: new Date().toISOString(),
         },
-        { status: 500 }
+        status: 'new',
+      },
+    })
+
+    // Try to send emails (non-blocking)
+    let emailSuccess = false
+    try {
+      // Send confirmation email to user
+      const userTemplate = emailTemplates.contactConfirmation(
+        validatedData.name,
+        validatedData.subject
       )
+      
+      const userEmailResult = await sendEmail({
+        to: validatedData.email,
+        subject: userTemplate.subject,
+        html: userTemplate.html,
+        text: userTemplate.text
+      })
+
+      // Send notification email to admin
+      const adminTemplate = emailTemplates.newContactNotification(
+        validatedData.name,
+        validatedData.email,
+        validatedData.subject,
+        validatedData.message
+      )
+      
+      const adminEmailResult = await sendEmail({
+        to: process.env.ADMIN_EMAIL || 'hello@makemelearn.fr',
+        subject: adminTemplate.subject,
+        html: adminTemplate.html,
+        text: adminTemplate.text
+      })
+
+      emailSuccess = userEmailResult.success && adminEmailResult.success
+
+      if (emailSuccess) {
+        console.log('✅ Emails envoyés avec succès pour contact:', contact.id)
+      } else {
+        console.warn('⚠️ Erreur envoi emails, contact sauvegardé:', contact.id)
+      }
+
+    } catch (emailError) {
+      console.error('❌ Erreur emails (contact sauvegardé):', emailError)
+      emailSuccess = false
     }
 
+    // Return success regardless of email status
     return NextResponse.json({
       success: true,
-      message: 'Message envoyé avec succès ! Nous vous répondrons rapidement.'
+      message: emailSuccess 
+        ? 'Message envoyé avec succès ! Nous vous répondrons rapidement.'
+        : 'Message reçu ! Nous vous répondrons rapidement.',
+      data: { id: contact.id }
     })
 
   } catch (error) {
@@ -146,10 +142,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Handle database errors
+    if (error instanceof Error && error.message.includes('P2002')) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Erreur de sauvegarde. Veuillez réessayer.' 
+        },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json(
       { 
         success: false, 
-        message: 'Une erreur est survenue. Veuillez réessayer.' 
+        message: 'Une erreur est survenue. Veuillez réessayer ou nous contacter directement.' 
       },
       { status: 500 }
     )
@@ -158,9 +165,23 @@ export async function POST(request: NextRequest) {
 
 // Health check
 export async function GET() {
-  return NextResponse.json({
-    success: true,
-    message: 'Contact API is healthy',
-    timestamp: new Date().toISOString(),
-  })
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Contact API is healthy',
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error('Contact API health check error:', error)
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: 'Database connection failed' 
+      },
+      { status: 500 }
+    )
+  }
 }
